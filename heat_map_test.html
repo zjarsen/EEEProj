@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html ng-app="heatApp">
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js"></script>
+  <script   src="https://code.jquery.com/jquery-2.2.3.min.js"   integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="   crossorigin="anonymous"></script>
+  <script src="app.js"></script>
+  <meta charset="utf-8">
+  <title>Heatmaps</title>
+  <style>
+
+  input[type=date], select {
+    width: 217px;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  input[type=time], select {
+    width: 217px;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  input[type=submit] {
+    width: 435px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  input[type=submit2] {
+    width: 435px;
+    background-color: #52aaaf;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  input[type=text] {
+    width: 435px;
+    color: white;
+    background-color: #ffe1eb;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+  }
+
+  input[type=nothing] {
+    width: 435px;
+    color: white;
+    background-color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: default;
+  }
+
+  input[type=nothing2] {
+    width: 435px;
+    color: black;
+    background-color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: default;
+    text-align: center;
+  }
+
+  input[type=submit]:hover {
+    background-color: #45a049;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  #map {
+    height: 100%;
+  }
+  #floating-panel {
+    position: absolute;
+    top: 10px;
+    left: 25%;
+    z-index: 5;
+    background-color: #fff;
+    padding: 5px;
+    border: 1px solid #999;
+    text-align: center;
+    font-family: 'Roboto','sans-serif';
+    line-height: 30px;
+    padding-left: 10px;
+  }
+  #floating-panel {
+    background-color: #fff;
+    border: 1px solid #999;
+    left: 25%;
+    padding: 5px;
+    position: absolute;
+    top: 10px;
+    z-index: 5;
+  }
+  </style>
+</head>
+
+<body>
+
+  <div id="map" class="col-lg-6"></div>
+
+  <div ng-controller="HeatMapController as heatList" class="col-lg-6">
+    <form ng-submit="heatList.calculate()">
+      <input type="date" ng-model="heatList.startDate" name="StartDate" placeholder="Start Date">
+      <input type="time" ng-model="heatList.startTime"name="StartTime" placeholder="Start Time">
+      <br>
+      <input type="date" ng-model="heatList.endDate" name="EndDate" placeholder="End Date">
+      <input type="time" ng-model="heatList.endTime" name="EndTime" placeholder="End Time">
+      <input type="text" ng-model="heatList.vid" name="VehicleID" placeholder="Enter Vehicle ID: 20848848 / 20850896 / 20427984">
+      <br>
+      <input type="submit" value="Get records from server">&nbsp
+      <input type="submit2" value="Show on map" onclick="initMap()">&nbsp
+      <input type="nothing2" value={{average}} name="Average Speed" placeholder="Average Speed">
+      <input type="nothing" id="myText" value={{greeting}} name="VehicleID">
+    </form>
+    <!--<span>start date: {{heatList.date}}</span>-->
+    <!--<span>start time: {{heatList.time}}</span>-->
+    <!--<span>date: {{startDate}}</span>-->
+    <!--<span>time: {{startTime}}</span>-->
+    <!--<span>time: {{greeting}}</span>-->
+    <!--<span>final time: {{finalTime}}</span>-->
+  </div>
+
+
+  <script>
+
+  var map, heatmap;
+
+  function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 16,
+      center: {lat: 1.3483, lng: 103.6901},
+      mapTypeId: google.maps.MapTypeId.SATELLITE
+    });
+
+    heatmap = new google.maps.visualization.HeatmapLayer({
+      data: getPoints(),
+      map: map
+    });
+  }
+
+  function toggleHeatmap() {
+    heatmap.setMap(heatmap.getMap() ? null : map);
+  }
+
+  function changeRadius() {
+    heatmap.set('radius', heatmap.get('radius') ? null : 20);
+  }
+
+  function changeOpacity() {
+    heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
+  }
+
+  // Heatmap data: 500 Points
+  function getPoints() {
+    var x = document.getElementById("myText").value;
+    x = JSON.parse(x);
+
+    var toReturn = [];
+    toReturn.push(new google.maps.LatLng(1.3419566, 103.6810818));
+
+    for(var i=0;i<x.length;i++){
+      var obj = x[i];
+      var lat = parseFloat(obj['latitude']);
+      var longi = parseFloat(obj['longitude']);
+      toReturn.push(new google.maps.LatLng(lat, longi));
+    }
+
+    console.log("helloworld");
+
+    return toReturn;
+
+  }
+  </script>
+  <script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAIS_NEQuBkvqGey58ufHftAIP8yZ0MJPk&libraries=visualization&callback=initMap">
+  </script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+</body>
+</html>
